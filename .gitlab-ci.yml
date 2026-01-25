@@ -1,0 +1,38 @@
+stages:
+  - build
+  - scan
+
+variables:
+  # Customize these match your environment
+  DOCKER_IMAGE_NAME: "autovapt"
+  TARGET_URL: "http://example.com" # Default target, overload in CI/CD Settings variables
+
+# Helper for Docker build
+build_job:
+  stage: build
+  script:
+    - echo "Building AutoVAPT Docker Image..."
+    - docker build -t $DOCKER_IMAGE_NAME .
+  tags:
+    - self-hosted
+    - shell  # Assuming your runner has shell access to docker, or use docker-in-docker
+
+# VAPT Scan Job
+scan_job:
+  stage: scan
+  script:
+    - echo "Starting VAPT Scan on target: $TARGET_URL"
+    - mkdir -p reports
+    # Run the container. Mount ./reports to capture output
+    - docker run --rm -v $(pwd)/reports:/app/reports $DOCKER_IMAGE_NAME --target $TARGET_URL --no-tool-check
+  artifacts:
+    paths:
+      - reports/
+    expire_in: 1 week
+    when: always
+  tags:
+    - self-hosted
+    - shell
+  only:
+    - main
+    - web # Trigger on specific branches or schedules
